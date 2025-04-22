@@ -124,8 +124,30 @@ user_input[num_cols] = scaler.transform(user_input[num_cols])
 
 # ---- Prediction ----
 if st.button("Predict Cancellation"):
-    # Ensure correct data types
+    # Remove 'Booking_ID' from user input
+    user_input = user_data.drop(columns=["Booking_ID"]).copy()
+
+    # Encode categorical columns using label_encoders
+    for col in cat_cols:
+        if col in user_input.columns:
+            # Transform using label encoder if not already encoded
+            if user_input[col][0] not in label_encoders[col].classes_:
+                user_input[col] = label_encoders[col].transform([label_encoders[col].classes_[0]])
+            else:
+                user_input[col] = label_encoders[col].transform(user_input[col])
+
+    # Impute missing values for both categorical and numerical columns
+    user_input[cat_cols] = imputer_cat.transform(user_input[cat_cols])
+    user_input[num_cols] = imputer_num.transform(user_input[num_cols])
+
+    # Scale the numerical columns
+    user_input[num_cols] = scaler.transform(user_input[num_cols])
+
+    # Ensure that the input features have the same data types as the training data
     user_input = user_input.astype({col: 'float64' for col in num_cols})
+
+    # Ensure the feature order is the same as the training set
+    user_input = user_input[X_train.columns]
 
     # Perform the prediction
     prediction = model.predict(user_input)
