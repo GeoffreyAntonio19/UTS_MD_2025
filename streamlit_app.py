@@ -20,23 +20,29 @@ def gdrive_to_direct_link(gdrive_link):
     return f'https://drive.google.com/uc?id={file_id}'
 
 # ==== EDA CLASS ====
+import io
+
 class EDA:
     @staticmethod
     def run(data):
-        st.subheader("Dataset Information")
-        buffer = []
+        # Use StringIO to capture the output of info()
+        buffer = io.StringIO()
         data.info(buf=buffer)
-        info_str = '\n'.join(buffer)
+        info_str = buffer.getvalue()
+        
+        # Now you can display this in Streamlit
         st.text(info_str)
 
+        # Other analysis outputs can go here
         st.subheader("Descriptive Statistics")
         st.write(data.describe(include='all'))
 
         st.subheader("Missing Values Count")
         st.write(data.isnull().sum())
 
-        st.subheader("Target Value Counts")
-        st.write(data.iloc[:, -1].value_counts())
+        if 'Canceled' in data.columns or 'Not_Canceled' in data.columns:
+            st.subheader("Target Value Counts")
+            st.write(data.iloc[:, -1].value_counts())
 
 # ==== DATA LOADER CLASS ====
 class DataLoader:
