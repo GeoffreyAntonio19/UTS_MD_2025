@@ -55,11 +55,29 @@ df, label_encoders, imputer, scaler = preprocess_data(df)
 X = df.drop(columns=["booking_status"])
 y = df["booking_status"]
 
+# Check for missing values
+if X.isnull().sum().any():
+    st.error("There are missing values in the feature data!")
+    st.stop()
+
+# Check if data shapes are compatible
+st.write(X.shape, y.shape)
+
+# Split the data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-model = XGBClassifier(n_estimators=100, random_state=42)
-model.fit(X_train, y_train)
+# Check if training data has any missing values
+if X_train.isnull().sum().any() or y_train.isnull().sum().any():
+    st.error("There are missing values in the training data!")
+    st.stop()
 
+# Check data types of the features
+st.write(X_train.dtypes)
+
+model = XGBClassifier(n_estimators=100, random_state=42)
+
+# Train the model
+model.fit(X_train, y_train)
 # ---- User Input Features ----
 st.subheader('**Input Features**')
 user_data = pd.DataFrame({
