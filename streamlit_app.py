@@ -107,6 +107,7 @@ user_df = user_df.astype(X_train.dtypes.to_dict())
 
 # Prediction
 if st.button('Predict'):
-    prediction = model.predict(user_df)[0]
-    label = le_status.inverse_transform([prediction])[0]
+    dmatrix = xgb.DMatrix(user_df)
+    prediction = model.get_booster().predict(dmatrix)
+    label = le_status.inverse_transform([int(prediction[0])])[0]
     st.success(f"Prediction: **{label}**")
