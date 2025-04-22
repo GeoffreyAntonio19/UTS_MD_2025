@@ -104,59 +104,35 @@ user_data = pd.DataFrame({
 st.subheader("User Input (Original)")
 st.dataframe(user_data, use_container_width=True)
 
-# ---- Preprocess User Input ----
-user_input = user_data.copy()
+# ... (previous code remains the same until the Display Input section) ...
 
-# Encode categorical columns
-for col in cat_cols:
-    if col in user_input.columns:
-        if user_input[col][0] not in label_encoders[col].classes_:
-            user_input[col] = label_encoders[col].transform([label_encoders[col].classes_[0]])
-        else:
-            user_input[col] = label_encoders[col].transform(user_input[col])
-
-# Impute
-user_input[cat_cols] = imputer_cat.transform(user_input[cat_cols])
-user_input[num_cols] = imputer_num.transform(user_input[num_cols])
-
-# Scale
-user_input[num_cols] = scaler.transform(user_input[num_cols])
+# ---- Display Input ----
+st.subheader("User Input (Original)")
+st.dataframe(user_data, use_container_width=True)
 
 # ---- Prediction ----
 if st.button("Predict Cancellation"):
-    # Remove 'Booking_ID' from user input
-    user_input = user_data.drop(columns=["Booking_ID"]).copy()
-
-    # Encode categorical columns using label_encoders
+    # Preprocess user input
+    user_input = user_data.copy()
+    
+    # Encode categorical columns
     for col in cat_cols:
         if col in user_input.columns:
-            # Transform using label encoder if not already encoded
-            if user_input[col][0] not in label_encoders[col].classes_:
-                user_input[col] = label_encoders[col].transform([label_encoders[col].classes_[0]])
-            else:
-                user_input[col] = label_encoders[col].transform(user_input[col])
+            user_input[col] = label_encoders[col].transform([user_input[col].iloc[0]])[0]
 
-    # Impute missing values for both categorical and numerical columns
-    user_input[cat_cols] = imputer_cat.transform(user_input[cat_cols])
-    user_input[num_cols] = imputer_num.transform(user_input[num_cols])
-
-    # Scale the numerical columns
+    # Scale numerical columns
     user_input[num_cols] = scaler.transform(user_input[num_cols])
 
-    # Ensure that the input features have the same data types as the training data
-    user_input = user_input.astype({col: 'float64' for col in num_cols})
-
-    # Ensure the feature order is the same as the training set
-    user_input = user_input[X_train.columns]
-
-    # Perform the prediction
+    # Make prediction
     prediction = model.predict(user_input)
-    proba = model.predict_proba(user_input)
-
-    label_target = label_encoders["booking_status"].classes_ if "booking_status" in label_encoders else ["Not Cancelled", "Cancelled"]
-    pred_label = label_target[prediction[0]]
-
-    st.subheader("Prediction Result")
-    st.success(f"**Predicted Status: {pred_label}**")
-    st.write("**Prediction Probabilities:**")
-    st.dataframe(pd.DataFrame(proba, columns=label_target).style.format("{:.4f}"))
+    probability = model.predict_proba(user_input)
+    
+    # Decode prediction
+    result = label_encoders["booking_status"].inverse_transform(prediction)[0]
+    prob_cancelled = probability[0][1]
+    
+    # Display results
+    if result == 1:
+        st.error(f"Booking is likely to be cancelled (Probability: {prob_cancelled:.2%})")
+    else:
+        st.success(f"Booking is likely to be confirmed (Probability: {1-prob_cancelled:.2%})")
