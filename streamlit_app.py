@@ -17,7 +17,6 @@ def load_data():
     return df
 
 df = load_data()
-df.drop(columns=["Booking_ID"], inplace=True)
 
 # ---- Data Exploration ----
 with st.expander('**Dataset Preview**'):
@@ -26,6 +25,7 @@ with st.expander('**Dataset Preview**'):
 
 # ---- Preprocessing Function ----
 def preprocess_data(df):
+    df.drop(columns=["Booking_ID"], inplace=True)
     y = df["booking_status"] if "booking_status" in df.columns else None
     X = df.drop(columns=["booking_status"]) if y is not None else df.copy()
 
