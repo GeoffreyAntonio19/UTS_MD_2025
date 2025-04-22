@@ -26,28 +26,40 @@ with st.expander('**Dataset Preview**'):
 
 # ---- Data Preprocessing ----
 def preprocess_data(df):
-    # Impute missing values
-    imputer = SimpleImputer(strategy='most_frequent')  # Use the most frequent strategy for categorical features
-    df_imputed = pd.DataFrame(imputer.fit_transform(df), columns=df.columns)
+    # Pisahkan target jika ada
+    y = df["booking_status"] if "booking_status" in df.columns else None
+    X = df.drop(columns=["booking_status"]) if y is not None else df.copy()
 
+    # Identifikasi kolom kategorikal dan numerik
+    categorical_columns = X.select_dtypes(include=["object"]).columns.tolist()
+    numerical_columns = X.select_dtypes(include=["int64", "float64"]).columns.tolist()
+
+    # Imputasi
+    imputer_cat = SimpleImputer(strategy='most_frequent')
+    imputer_num = SimpleImputer(strategy='mean')
+
+    X[categorical_columns] = imputer_cat.fit_transform(X[categorical_columns])
+    X[numerical_columns] = imputer_num.fit_transform(X[numerical_columns])
+
+    # Encode kategorikal
     label_encoders = {}
-    categorical_columns = [
-        "type_of_meal_plan", "room_type_reserved", "market_segment_type", "booking_status"
-    ]
-
-    # Encoding categorical features
     for col in categorical_columns:
-        if col in df_imputed.columns:
-            le = LabelEncoder()
-            df_imputed[col] = le.fit_transform(df_imputed[col])
-            label_encoders[col] = le
+        le = LabelEncoder()
+        X[col] = le.fit_transform(X[col])
+        label_encoders[col] = le
 
-    # Optional: Scale numerical features if necessary
-    numerical_columns = df_imputed.select_dtypes(include=['int64', 'float64']).columns
+    # Standardisasi fitur numerik
     scaler = StandardScaler()
-    df_imputed[numerical_columns] = scaler.fit_transform(df_imputed[numerical_columns])
+    X[numerical_columns] = scaler.fit_transform(X[numerical_columns])
 
-    return df_imputed, label_encoders, imputer, scaler
+    # Gabungkan kembali X dan y
+    if y is not None:
+        df_processed = X.copy()
+        df_processed["booking_status"] = y.reset_index(drop=True)
+    else:
+        df_processed = X
+
+    return df_processed, label_encoders, imputer_cat, imputer_num, scaler
 
 df, label_encoders, imputer, scaler = preprocess_data(df)
 
@@ -110,19 +122,23 @@ st.dataframe(user_data_original, use_container_width=True)
 user_data_encoded = user_data.copy()
 
 # Apply encoding for categorical variables
-for col in label_encoders:
-    if col in user_data_encoded.columns:
-        le = label_encoders[col]
-        if user_data_encoded[col][0] not in le.classes_:
-            user_data_encoded[col] = le.transform([le.classes_[0]])  # Use default (first class)
-        else:
-            user_data_encoded[col] = le.transform(user_data_encoded[col])
+# Pisahkan kolom numerik dan kategorikal
+categorical_columns = list(label_encoders.keys())
+numerical_columns = user_data_encoded.select_dtypes(include=["int64", "float64"]).columns.tolist()
 
-# Impute missing values if needed
-user_data_imputed = pd.DataFrame(imputer.transform(user_data_encoded), columns=user_data_encoded.columns)
+# Impute kategorikal
+for col in categorical_columns:
+    if user_data_encoded[col][0] not in label_encoders[col].classes_:
+        user_data_encoded[col] = label_encoders[col].transform([label_encoders[col].classes_[0]])
+    else:
+        user_data_encoded[col] = label_encoders[col].transform(user_data_encoded[col])
 
-# Scale numerical values
-user_data_imputed[user_data_imputed.select_dtypes(include=['int64', 'float64']).columns] = scaler.transform(user_data_imputed.select_dtypes(include=['int64', 'float64']))
+# Impute numerik
+user_data_encoded[categorical_columns] = imputer_cat.transform(user_data_encoded[categorical_columns])
+user_data_encoded[numerical_columns] = imputer_num.transform(user_data_encoded[numerical_columns])
+
+# Scale numerik
+user_data_encoded[numerical_columns] = scaler.transform(user_data_encoded[numerical_columns])
 
 # ---- Make Prediction ----
 if st.button("Predict Cancellation"):
