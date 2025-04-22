@@ -81,7 +81,6 @@ model.fit(X_train, y_train)
 # ---- Input Features ----
 st.subheader('**Input Features**')
 user_data = pd.DataFrame({
-    "Booking_ID": [st.text_input("Booking ID")],
     "no_of_adults": [st.slider("Number of Adults", 0, 10, 1)],
     "no_of_children": [st.slider("Number of Children", 0, 10, 0)],
     "no_of_weekend_nights": [st.slider("Weekend Nights", 0, 7, 1)],
