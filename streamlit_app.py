@@ -48,32 +48,36 @@ no_of_special_requests = st.slider("Number of Special Requests", 0, 5, 0)
 
 # Run prediction when button is clicked
 if st.button("Predict"):
-    # Collect inputs into a DataFrame
-    input_data = pd.DataFrame([{
-        "no_of_adults": no_of_adults,
-        "no_of_children": no_of_children,
-        "no_of_weekend_nights": no_of_weekend_nights,
-        "no_of_week_nights": no_of_week_nights,
-        "type_of_meal_plan": type_of_meal_plan,
-        "required_car_parking_space": required_car_parking_space,
-        "room_type_reserved": room_type_reserved,
-        "lead_time": lead_time,
-        "arrival_year": arrival_year,
-        "arrival_month": arrival_month,
-        "arrival_date": arrival_date,
-        "market_segment_type": market_segment_type,
-        "repeated_guest": repeated_guest,
-        "no_of_previous_cancellations": no_of_previous_cancellations,
-        "no_of_previous_bookings_not_canceled": no_of_previous_bookings_not_canceled,
-        "avg_price_per_room": avg_price_per_room,
-        "no_of_special_requests": no_of_special_requests
-    }])
+    try:
+        # Collect inputs into a DataFrame
+        input_data = pd.DataFrame([{
+            "no_of_adults": no_of_adults,
+            "no_of_children": no_of_children,
+            "no_of_weekend_nights": no_of_weekend_nights,
+            "no_of_week_nights": no_of_week_nights,
+            "type_of_meal_plan": type_of_meal_plan,
+            "required_car_parking_space": required_car_parking_space,
+            "room_type_reserved": room_type_reserved,
+            "lead_time": lead_time,
+            "arrival_year": arrival_year,
+            "arrival_month": arrival_month,
+            "arrival_date": arrival_date,
+            "market_segment_type": market_segment_type,
+            "repeated_guest": repeated_guest,
+            "no_of_previous_cancellations": no_of_previous_cancellations,
+            "no_of_previous_bookings_not_canceled": no_of_previous_bookings_not_canceled,
+            "avg_price_per_room": avg_price_per_room,
+            "no_of_special_requests": no_of_special_requests
+        }])
 
-    # Preprocess & predict
-    X_processed = preprocessor.transform(input_data)
-    pred = model.predict(X_processed)
-    label = label_encoder.inverse_transform(pred)
+        # Preprocess & predict
+        X_processed = preprocessor.transform(input_data)
+        pred = model.predict(X_processed)
+        label = label_encoder.inverse_transform(pred)
 
-    # Display result
-    st.subheader("Prediction Result")
-    st.success(f"📢 Booking Status: **{label[0]}**")
+        # Display result
+        st.subheader("Prediction Result")
+        st.success(f"📢 Booking Status: **{label[0]}**")
+
+    except Exception as e:
+        st.error(f"❌ An error occurred: {e}")
