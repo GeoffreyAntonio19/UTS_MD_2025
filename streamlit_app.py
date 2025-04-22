@@ -104,12 +104,6 @@ user_data = pd.DataFrame({
 st.subheader("User Input (Original)")
 st.dataframe(user_data, use_container_width=True)
 
-# ... (previous code remains the same until the Display Input section) ...
-
-# ---- Display Input ----
-st.subheader("User Input (Original)")
-st.dataframe(user_data, use_container_width=True)
-
 # ---- Prediction ----
 if st.button("Predict Cancellation"):
     # Preprocess user input
