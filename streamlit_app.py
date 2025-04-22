@@ -16,7 +16,7 @@ def load_data():
     return df
 
 df = load_data()
-df.drop(column=["Booking_ID"])
+df.drop(columns=["Booking_ID"])
 
 # ---- Data Exploration ----
 with st.expander('**Dataset Preview**'):
