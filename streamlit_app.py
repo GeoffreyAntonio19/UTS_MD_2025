@@ -64,7 +64,7 @@ df, label_encoders, imputer_cat, imputer_num, scaler, cat_cols, num_cols = prepr
 
 # ---- Train Model ----
 X = df.drop(columns=["booking_status"])
-y = df["booking_status"]
+y = df["booking_status"].astype(int)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 model = XGBClassifier(n_estimators=100, random_state=42)
