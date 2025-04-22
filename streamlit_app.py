@@ -47,9 +47,10 @@ avg_price_per_room = st.number_input("Average Price per Room", min_value=0.0, ma
 no_of_special_requests = st.slider("Number of Special Requests", 0, 5, 0)
 
 # Run prediction when button is clicked
+# Wrap prediction in a button handler
 if st.button("Predict"):
     try:
-        # Step 1: Collect inputs into DataFrame
+        # Step 1: Build input DataFrame
         user_input = pd.DataFrame([{
             "no_of_adults": no_of_adults,
             "no_of_children": no_of_children,
@@ -70,14 +71,16 @@ if st.button("Predict"):
             "no_of_special_requests": no_of_special_requests
         }])
 
-        # Step 2: Preprocess the input
+        # Step 2: Apply preprocessing
         X_processed = preprocessor.transform(user_input)
 
-        # Step 3: Predict
+        # Step 3: Predict with processed input
         pred = model.predict(X_processed)
+
+        # Step 4: Decode label
         label = label_encoder.inverse_transform(pred)
 
-        # Step 4: Show result
+        # Step 5: Display result
         st.subheader("Prediction Result")
         st.success(f"📢 Booking Status: **{label[0]}**")
 
