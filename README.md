@@ -1,4 +1,4 @@
-# 📦 Streamlit App Starter Kit 
+# 📦 Hotel Cancellation Prediction
 ```
 ⬆️ (Replace above with your app's name)
 ```
