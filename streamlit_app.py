@@ -102,6 +102,9 @@ for col in cat_cols:
     if col in user_df.columns:
         user_df[col] = le_dict[col].transform(user_df[col])
 
+user_df = user_df[X_train.columns]
+user_df = user_df.astype(X_train.dtypes.to_dict())
+
 # Prediction
 if st.button('Predict'):
     prediction = model.predict(user_df)[0]
