@@ -113,6 +113,10 @@ if st.button("Predict Cancellation"):
     for col in cat_cols:
         if col in user_input.columns:
             user_input[col] = label_encoders[col].transform([user_input[col].iloc[0]])[0]
+    
+    # Convert to float64 to ensure compatibility with XGBoost
+    for col in user_input.columns:
+        user_input[col] = user_input[col].astype('float64')
 
     # Scale numerical columns
     user_input[num_cols] = scaler.transform(user_input[num_cols])
