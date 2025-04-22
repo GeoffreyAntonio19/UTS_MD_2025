@@ -1,189 +1,109 @@
-# streamlit_app.py
 import streamlit as st
-import pandas as pd
 import numpy as np
-
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.metrics import accuracy_score
+import pandas as pd
 from xgboost import XGBClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
 
-import warnings
-warnings.filterwarnings('ignore')
+# ---- Title ----
+st.title('Hotel Booking Cancellation Prediction')
+st.info('This application predicts whether a hotel booking will be cancelled based on various features.')
 
-# ==== UTILITY FUNCTION ====
-def gdrive_to_direct_link(gdrive_link):
-    file_id = gdrive_link.split('/d/')[1].split('/')[0]
-    return f'https://drive.google.com/uc?id={file_id}'
+# ---- Load Data ----
+@st.cache_data
+def load_data():
+    df = pd.read_csv('Dataset_B_hotel.csv')
+    return df
 
-# ==== EDA CLASS ====
-import io
+df = load_data()
 
-class EDA:
-    @staticmethod
-    def run(data):
-        # Use StringIO to capture the output of info()
-        buffer = io.StringIO()
-        data.info(buf=buffer)
-        info_str = buffer.getvalue()
-        
-        # Now you can display this in Streamlit
-        st.text(info_str)
+# ---- Data Exploration ----
+with st.expander('**Dataset Preview**'):
+    st.write('This is the raw dataset:')
+    st.dataframe(df)
 
-        # Other analysis outputs can go here
-        st.subheader("Descriptive Statistics")
-        st.write(data.describe(include='all'))
+with st.expander('**Data Visualization**'):
+    st.scatter_chart(data=df, x='lead_time', y='adr', color='is_canceled')
 
-        st.subheader("Missing Values Count")
-        st.write(data.isnull().sum())
+# ---- Data Preprocessing ----
+def preprocess_data(df):
+    label_encoders = {}
+    categorical_columns = [
+        "type_of_meal_plan", "room_type_reserved", "market_segment_type", "booking_status"
+    ]
 
-        if 'Canceled' in data.columns or 'Not_Canceled' in data.columns:
-            st.subheader("Target Value Counts")
-            st.write(data.iloc[:, -1].value_counts())
+    for col in categorical_columns:
+        if col in df.columns:
+            le = LabelEncoder()
+            df[col] = le.fit_transform(df[col])
+            label_encoders[col] = le
 
-# ==== DATA LOADER CLASS ====
-class DataLoader:
-    def __init__(self, gdrive_link, target_column, drop_columns=[]):
-        self.gdrive_link = gdrive_link
-        self.target_column = target_column
-        self.drop_columns = drop_columns
-        self.data = None
-        self.X_train = self.X_test = self.y_train = self.y_test = None
-        self.preprocessor = None
-        self.label_encoder = LabelEncoder()
+    return df, label_encoders
 
-    def load_data(self):
-        direct_link = gdrive_to_direct_link(self.gdrive_link)
-        self.data = pd.read_csv(direct_link)
-        st.success("✅ Data successfully loaded.")
+df, label_encoders = preprocess_data(df)
 
-    def preprocess(self):
-        if self.drop_columns:
-            self.data.drop(columns=self.drop_columns, inplace=True)
-            st.info(f"Dropped Columns: {self.drop_columns}")
+# ---- Train Model ----
+X = df.drop(columns=["booking_status"])
+y = df["booking_status"]
 
-        EDA.run(self.data)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        X = self.data.drop(columns=[self.target_column])
-        y = self.data[self.target_column]
-        y_encoded = self.label_encoder.fit_transform(y)
+model = XGBClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
 
-        num_features = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
-        cat_features = X.select_dtypes(include=['object', 'category']).columns.tolist()
+# ---- User Input Features ----
+st.subheader('**Input Features**')
+user_data = pd.DataFrame({
+    "Booking_ID": [st.text_input("Booking ID")],
+    "no_of_adults": [st.slider("Number of Adults", min_value=0, max_value=10, value=1)],
+    "no_of_children": [st.slider("Number of Children", min_value=0, max_value=10, value=0)],
+    "no_of_weekend_nights": [st.slider("Number of Weekend Nights", min_value=0, max_value=7, value=1)],
+    "no_of_week_nights": [st.slider("Number of Week Nights", min_value=0, max_value=20, value=2)],
+    "type_of_meal_plan": [st.selectbox("Meal Plan", ("Meal Plan 1", "Meal Plan 2", "Meal Plan 3", "Not Selected"))],
+    "required_car_parking_space": [st.selectbox("Car Parking Space", (0, 1))],
+    "room_type_reserved": [st.selectbox("Room Type Reserved", ("Room_Type 1", "Room_Type 2", "Room_Type 3", "Room_Type 4", "Room_Type 5", "Room_Type 6", "Room_Type 7"))],
+    "lead_time": [st.slider("Lead Time", min_value=0, max_value=450, value=50)],
+    "arrival_year": [st.selectbox("Arrival Year", (2017, 2018))],
+    "arrival_month": [st.selectbox("Arrival Month", (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))],
+    "arrival_date": [st.slider("Arrival Date", min_value=1, max_value=31, value=1)],
+    "market_segment_type": [st.selectbox("Market Segment", ("Offline", "Online", "Corporate", "Aviation", "Complementary"))],
+    "repeated_guest": [st.selectbox("Repeated Guest", (0, 1))],
+    "no_of_previous_cancellations": [st.slider("Previous Cancellations", min_value=0, max_value=20, value=0)],
+    "no_of_previous_bookings_not_canceled": [st.slider("Previous Bookings Not Canceled", min_value=0, max_value=100, value=0)],
+    "avg_price_per_room": [st.slider("Average Price per Room", min_value=0.0, max_value=1000.0, value=100.0)],
+    "no_of_special_requests": [st.slider("Number of Special Requests", min_value=0, max_value=5, value=1)],
+})
 
-        num_pipeline = Pipeline([
-            ('imputer', SimpleImputer(strategy='mean')),
-            ('scaler', StandardScaler())
-        ])
+# ---- Display User Input (Original Data) ----
+st.subheader("User Input Data")
+user_data_original = user_data.copy() # Save the original input data before encoding
+st.dataframe(user_data_original, use_container_width=True)
 
-        cat_pipeline = Pipeline([
-            ('imputer', SimpleImputer(strategy='most_frequent')),
-            ('encoder', OneHotEncoder(handle_unknown='ignore', sparse=False))
-        ])
+# ---- Encode User Input (One-by-One Handling) ----
+user_data_encoded = user_data.copy()
+for col in label_encoders:
+    if col in user_data_encoded.columns:
+        le = label_encoders[col]
+        if user_data_encoded[col][0] not in le.classes_:
+            user_data_encoded[col] = le.transform([le.classes_[0]])  # Use default (first class)
+        else:
+            user_data_encoded[col] = le.transform(user_data_encoded[col])
 
-        self.preprocessor = ColumnTransformer([
-            ('num', num_pipeline, num_features),
-            ('cat', cat_pipeline, cat_features)
-        ])
+# ---- Make Prediction ----
+if st.button("Predict Cancellation"):
+    # Predict class and probabilities
+    prediction_proba = model.predict_proba(user_data_encoded)
+    prediction = model.predict(user_data_encoded)
+    predicted_class = 'Cancelled' if prediction[0] == 1 else 'Not Cancelled'
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y_encoded, test_size=0.2, random_state=42
-        )
+    # Get class names from encoder
+    class_names = label_encoders["booking_status"].classes_
 
-        self.X_train = self.preprocessor.fit_transform(X_train)
-        self.X_test = self.preprocessor.transform(X_test)
-        self.y_train = y_train
-        self.y_test = y_test
-        st.success("✅ Preprocessing completed.")
+    # Create dataframe for probabilities with class names as header
+    df_proba = pd.DataFrame(prediction_proba, columns=class_names)
 
-# ==== TRAINER CLASS ====
-class Trainer:
-    def __init__(self, model=None):
-        self.model = model or XGBClassifier(
-            use_label_encoder=False,
-            eval_metric='logloss',
-        )
+    # Display the prediction results and probability table
+    st.subheader("Prediction Results")
+    st.dataframe(df_proba.style.format("{:.4f}"), use_container_width=True)
 
-    def train(self, X_train, y_train):
-        self.model.fit(X_train, y_train)
-        st.success("✅ Model training completed.")
-
-    def evaluate(self, X_test, y_test):
-        y_pred = self.model.predict(X_test)
-        acc = accuracy_score(y_test, y_pred)
-        st.metric(label="🎯 Accuracy", value=f"{acc:.4f}")
-        return acc
-
-# ==== HYPERPARAMETER TUNER CLASS ====
-class HyperparameterTuner:
-    def __init__(self, model, param_grid, cv=5, scoring='accuracy', verbose=1):
-        self.model = model
-        self.param_grid = param_grid
-        self.cv = cv
-        self.scoring = scoring
-        self.verbose = verbose
-        self.best_estimator_ = None
-
-    def tune(self, X_train, y_train):
-        st.info("🔍 Tuning hyperparameters...")
-        grid_search = GridSearchCV(
-            estimator=self.model,
-            param_grid=self.param_grid,
-            cv=self.cv,
-            scoring=self.scoring,
-            verbose=self.verbose,
-            n_jobs=-1
-        )
-        grid_search.fit(X_train, y_train)
-        self.best_estimator_ = grid_search.best_estimator_
-        st.success("✅ Hyperparameter tuning complete.")
-        st.json(grid_search.best_params_)
-        return self.best_estimator_
-
-# ==== MASTER PIPELINE ====
-class MachineLearningPipeline:
-    def __init__(self, gdrive_link, target_column, drop_columns=[]):
-        self.data_loader = DataLoader(gdrive_link, target_column, drop_columns)
-        self.trainer = Trainer()
-
-    def run(self, tune_hyperparameters=False):
-        self.data_loader.load_data()
-        self.data_loader.preprocess()
-
-        if tune_hyperparameters:
-            param_grid = {
-                'n_estimators': [100, 150],
-                'max_depth': [3, 5, 7],
-                'learning_rate': [0.01, 0.1],
-                'subsample': [0.8, 1.0]
-            }
-            base_model = XGBClassifier(use_label_encoder=False, eval_metric='logloss')
-            tuner = HyperparameterTuner(base_model, param_grid)
-            best_model = tuner.tune(self.data_loader.X_train, self.data_loader.y_train)
-            self.trainer = Trainer(model=best_model)
-
-        self.trainer.train(self.data_loader.X_train, self.data_loader.y_train)
-        return self.trainer.evaluate(self.data_loader.X_test, self.data_loader.y_test)
-
-# ==== STREAMLIT UI ====
-def main():
-    st.title("🚀 Hotel Booking Cancellation Prediction App")
-
-    gdrive_link = st.text_input("Enter Google Drive Link to Dataset", 
-        value="https://drive.google.com/file/d/1qPLgQzEVtMt3jw695tYvWoBgBWpIRZyB/view?usp=sharing")
-
-    run_tuning = st.checkbox("🔧 Perform Hyperparameter Tuning?", value=True)
-
-    if st.button("Start Pipeline"):
-        pipeline = MachineLearningPipeline(
-            gdrive_link=gdrive_link,
-            target_column="booking_status",
-            drop_columns=['Booking_ID']
-        )
-        pipeline.run(tune_hyperparameters=run_tuning)
-
-if __name__ == "__main__":
-    main()
+    st.success(f"Predicted Cancellation Status: **{predicted_class}**")
