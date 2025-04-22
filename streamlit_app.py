@@ -22,9 +22,6 @@ with st.expander('**Dataset Preview**'):
     st.write('This is the raw dataset:')
     st.dataframe(df)
 
-with st.expander('**Data Visualization**'):
-    st.scatter_chart(data=df, x='lead_time', y='adr', color='is_canceled')
-
 # ---- Data Preprocessing ----
 def preprocess_data(df):
     label_encoders = {}
