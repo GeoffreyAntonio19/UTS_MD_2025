@@ -2,8 +2,9 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 from xgboost import XGBClassifier
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.impute import SimpleImputer
 
 # ---- Title ----
 st.title('Hotel Booking Cancellation Prediction')
@@ -16,7 +17,7 @@ def load_data():
     return df
 
 df = load_data()
-df.drop(columns=["Booking_ID"])
+df.drop(columns=["Booking_ID"], inplace=True)  # Remove Booking_ID if not needed
 
 # ---- Data Exploration ----
 with st.expander('**Dataset Preview**'):
@@ -25,20 +26,30 @@ with st.expander('**Dataset Preview**'):
 
 # ---- Data Preprocessing ----
 def preprocess_data(df):
+    # Impute missing values
+    imputer = SimpleImputer(strategy='most_frequent')  # Use the most frequent strategy for categorical features
+    df_imputed = pd.DataFrame(imputer.fit_transform(df), columns=df.columns)
+
     label_encoders = {}
     categorical_columns = [
         "type_of_meal_plan", "room_type_reserved", "market_segment_type", "booking_status"
     ]
 
+    # Encoding categorical features
     for col in categorical_columns:
-        if col in df.columns:
+        if col in df_imputed.columns:
             le = LabelEncoder()
-            df[col] = le.fit_transform(df[col])
+            df_imputed[col] = le.fit_transform(df_imputed[col])
             label_encoders[col] = le
 
-    return df, label_encoders
+    # Optional: Scale numerical features if necessary
+    numerical_columns = df_imputed.select_dtypes(include=['int64', 'float64']).columns
+    scaler = StandardScaler()
+    df_imputed[numerical_columns] = scaler.fit_transform(df_imputed[numerical_columns])
 
-df, label_encoders = preprocess_data(df)
+    return df_imputed, label_encoders, imputer, scaler
+
+df, label_encoders, imputer, scaler = preprocess_data(df)
 
 # ---- Train Model ----
 X = df.drop(columns=["booking_status"])
@@ -79,6 +90,8 @@ st.dataframe(user_data_original, use_container_width=True)
 
 # ---- Encode User Input (One-by-One Handling) ----
 user_data_encoded = user_data.copy()
+
+# Apply encoding for categorical variables
 for col in label_encoders:
     if col in user_data_encoded.columns:
         le = label_encoders[col]
@@ -87,11 +100,17 @@ for col in label_encoders:
         else:
             user_data_encoded[col] = le.transform(user_data_encoded[col])
 
+# Impute missing values if needed
+user_data_imputed = pd.DataFrame(imputer.transform(user_data_encoded), columns=user_data_encoded.columns)
+
+# Scale numerical values
+user_data_imputed[user_data_imputed.select_dtypes(include=['int64', 'float64']).columns] = scaler.transform(user_data_imputed.select_dtypes(include=['int64', 'float64']))
+
 # ---- Make Prediction ----
 if st.button("Predict Cancellation"):
     # Predict class and probabilities
-    prediction_proba = model.predict_proba(user_data_encoded)
-    prediction = model.predict(user_data_encoded)
+    prediction_proba = model.predict_proba(user_data_imputed)
+    prediction = model.predict(user_data_imputed)
     predicted_class = 'Cancelled' if prediction[0] == 1 else 'Not Cancelled'
 
     # Get class names from encoder
