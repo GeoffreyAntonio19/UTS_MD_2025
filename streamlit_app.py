@@ -49,8 +49,8 @@ no_of_special_requests = st.slider("Number of Special Requests", 0, 5, 0)
 # Run prediction when button is clicked
 if st.button("Predict"):
     try:
-        # Collect inputs into a DataFrame
-        input_data = pd.DataFrame([{
+        # Step 1: Collect inputs into DataFrame
+        user_input = pd.DataFrame([{
             "no_of_adults": no_of_adults,
             "no_of_children": no_of_children,
             "no_of_weekend_nights": no_of_weekend_nights,
@@ -70,12 +70,14 @@ if st.button("Predict"):
             "no_of_special_requests": no_of_special_requests
         }])
 
-        # Preprocess & predict
-        X_processed = preprocessor.transform(input_data)
+        # Step 2: Preprocess the input
+        X_processed = preprocessor.transform(user_input)
+
+        # Step 3: Predict
         pred = model.predict(X_processed)
         label = label_encoder.inverse_transform(pred)
 
-        # Display result
+        # Step 4: Show result
         st.subheader("Prediction Result")
         st.success(f"📢 Booking Status: **{label[0]}**")
 
