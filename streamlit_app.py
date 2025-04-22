@@ -105,7 +105,7 @@ st.subheader("User Input (Original)")
 st.dataframe(user_data, use_container_width=True)
 
 # ---- Preprocess User Input ----
-user_input = user_data.drop(columns=["Booking_ID"]).copy()
+user_input = user_data.copy()
 
 # Encode categorical columns
 for col in cat_cols:
