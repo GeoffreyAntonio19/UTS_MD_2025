@@ -124,14 +124,14 @@ user_input[num_cols] = scaler.transform(user_input[num_cols])
 
 # ---- Prediction ----
 if st.button("Predict Cancellation"):
+    # Ensure correct data types
+    user_input = user_input.astype({col: 'float64' for col in num_cols})
+
+    # Perform the prediction
     prediction = model.predict(user_input)
     proba = model.predict_proba(user_input)
 
-    if "booking_status" in label_encoders:
-        label_target = label_encoders["booking_status"].classes_
-    else:
-        label_target = ["Not Canceled", "Canceled"]
-
+    label_target = label_encoders["booking_status"].classes_ if "booking_status" in label_encoders else ["Not Cancelled", "Cancelled"]
     pred_label = label_target[prediction[0]]
 
     st.subheader("Prediction Result")
